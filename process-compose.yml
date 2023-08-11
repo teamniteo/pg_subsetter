@@ -1,0 +1,10 @@
+version: "0.5"
+
+processes:
+  postgresql:
+    command: ".pgsql/run.sh"
+    availability:
+      restart: "always"
+    environment:
+      - "PGDATA=./.pgsql/data"
+      - "PGHOST=./.pgsql"
