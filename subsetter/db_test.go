@@ -22,7 +22,7 @@ func getTestConnection() *pgx.Conn {
 }
 
 func populateTests(conn *pgx.Conn) {
-	conn.Exec(context.Background(), `
+	_, err := conn.Exec(context.Background(), `
 		CREATE TABLE simple (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			text TEXT
@@ -35,24 +35,36 @@ func populateTests(conn *pgx.Conn) {
 
 		ALTER TABLE relation ADD CONSTRAINT relation_simple_fk FOREIGN KEY (simple_id) REFERENCES simple(id);
 	`)
+
+	if err != nil {
+		panic(err)
+	}
 }
 
 func populateTestsWithData(conn *pgx.Conn, table string, size int) {
 	for i := 0; i < size; i++ {
 		query := fmt.Sprintf("INSERT INTO %s (text) VALUES ('test%d') RETURNING id", table, i)
 		var row string
-		conn.QueryRow(context.Background(), query).Scan(&row)
+		err := conn.QueryRow(context.Background(), query).Scan(&row)
+		if err != nil {
+			panic(err)
+		}
 		query = fmt.Sprintf("INSERT INTO relation (simple_id) VALUES ('%v')", row)
 
-		conn.Exec(context.Background(), query)
-
+		_, err = conn.Exec(context.Background(), query)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
 func clearPopulateTests(conn *pgx.Conn) {
-	conn.Exec(context.Background(), `
+	_, err := conn.Exec(context.Background(), `
 		ALTER TABLE relation DROP CONSTRAINT relation_simple_fk;
 		DROP TABLE simple;
 		DROP TABLE relation;
 	`)
+	if err != nil {
+		panic(err)
+	}
 }

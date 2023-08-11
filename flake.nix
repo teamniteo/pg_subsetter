@@ -34,6 +34,7 @@
             packages = with pkgs; [
               go
               goreleaser
+              golangci-lint
               postgresql
               process-compose
               shellcheck

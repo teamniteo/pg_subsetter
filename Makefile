@@ -19,3 +19,6 @@ pgweb:is-postgres-running
 build:
 	rm -rf dist
 	goreleaser build --snapshot --clean
+
+lint:
+	golangci-lint run

@@ -21,9 +21,9 @@ func GetRelations(table string, conn *pgx.Conn) (relations []string, err error) 
 	rows, err := conn.Query(context.Background(), q, table)
 	for rows.Next() {
 		var table string
-		rows.Scan(&table)
-
-		relations = append(relations, table)
+		if err := rows.Scan(&table); err == nil {
+			relations = append(relations, table)
+		}
 	}
 	rows.Close()
 	return
