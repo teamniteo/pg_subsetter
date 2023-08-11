@@ -1,7 +1,9 @@
 package subsetter
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -37,6 +39,23 @@ func GetTablesWithRows(conn *pgx.Conn) (tables []Table, err error) {
 		tables = append(tables, table)
 	}
 	rows.Close()
+
+	return
+}
+
+func CopyTableToString(table string, limit int, conn *pgx.Conn) (result string, err error) {
+	q := fmt.Sprintf(`copy (SELECT * FROM %s order by random() limit %d) to stdout`, table, limit)
+	var buff bytes.Buffer
+	conn.PgConn().CopyTo(context.Background(), &buff, q)
+	result = buff.String()
+	return
+}
+
+func CopyStringToTable(table string, data string, conn *pgx.Conn) (err error) {
+	q := fmt.Sprintf(`copy %s from stdout`, table)
+	var buff bytes.Buffer
+	buff.WriteString(data)
+	conn.PgConn().CopyFrom(context.Background(), &buff, q)
 
 	return
 }
