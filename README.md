@@ -17,6 +17,19 @@ Utilizing the native PostgreSQL COPY command, pg-subsetter performs data transfe
 
 ## Usage
 
+```
+Usage of subsetter:
+  -dst string
+        Destination DSN
+  -f float
+        Fraction of rows to copy (default 0.05)
+  -src string
+        Source DSN
+```
+
+
+Example:
+
 ```pg-subsetter -src postgresql://:@/bigdb -dst postgresql://:@/littledb -f 0.05```
 
 # Installing

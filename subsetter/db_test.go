@@ -41,8 +41,7 @@ func populateTestsWithData(conn *pgx.Conn, table string, size int) {
 	for i := 0; i < size; i++ {
 		query := fmt.Sprintf("INSERT INTO %s (text) VALUES ('test%d') RETURNING id", table, i)
 		var row string
-		err := conn.QueryRow(context.Background(), query).Scan(&row)
-		fmt.Println(err)
+		conn.QueryRow(context.Background(), query).Scan(&row)
 		query = fmt.Sprintf("INSERT INTO relation (simple_id) VALUES ('%v')", row)
 
 		conn.Exec(context.Background(), query)

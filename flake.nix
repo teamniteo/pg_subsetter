@@ -33,6 +33,7 @@
             stdenv = stdenvMinimal;
             packages = with pkgs; [
               go
+              goreleaser
               postgresql
               process-compose
               shellcheck

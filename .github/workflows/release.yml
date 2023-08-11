@@ -1,0 +1,38 @@
+name: release
+  
+permissions:
+    contents: write
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Tag to create'
+        required: true
+        default: 'v0.0.0'
+        type: string
+
+jobs:
+  run:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Checkout with tags
+        run: git fetch --prune --unshallow --tags
+
+      - name: Create release
+        run: |
+          git log --format="%C(auto) %H %s" `git tag --sort=-committerdate | head -1`...HEAD > changelog.txt
+          echo ${{ secrets.GITHUB_TOKEN }} | gh auth login --with-token
+          gh release create ${{ github.event.inputs.tag }} -t ${{ github.event.inputs.tag }} -F changelog.txt
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v4.4.0
+        with:
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

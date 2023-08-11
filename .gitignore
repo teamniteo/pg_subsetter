@@ -1,1 +1,3 @@
 .pgsql/data
+bin
+dist/
