@@ -1,15 +1,13 @@
 package subsetter
 
 import (
-	"context"
 	"testing"
 )
 
 func TestGetTargetSet(t *testing.T) {
 	conn := getTestConnection()
-	populateTests(conn)
-	defer conn.Close(context.Background())
-	defer clearPopulateTests(conn)
+	initSchema(conn)
+	defer clearSchema(conn)
 
 	tests := []struct {
 		name     string
@@ -17,8 +15,8 @@ func TestGetTargetSet(t *testing.T) {
 		tables   []Table
 		want     []Table
 	}{
-		{"simple", 0.5, []Table{{"simple", 1000, []string{}}}, []Table{{"simple", 31, []string{}}}},
-		{"simple", 0.5, []Table{{"simple", 10, []string{}}}, []Table{{"simple", 3, []string{}}}},
+		{"simple", 0.5, []Table{{"simple", 1000, []Relation{}}}, []Table{{"simple", 31, []Relation{}}}},
+		{"simple", 0.5, []Table{{"simple", 10, []Relation{}}}, []Table{{"simple", 3, []Relation{}}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -2,46 +2,23 @@ package subsetter
 
 import (
 	"context"
-	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-func TestGetTables(t *testing.T) {
-	conn := getTestConnection()
-	populateTests(conn)
-	defer conn.Close(context.Background())
-	defer clearPopulateTests(conn)
-	tests := []struct {
-		name       string
-		conn       *pgx.Conn
-		wantTables []string
-	}{
-		{"With tables", conn, []string{"simple", "relation"}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if gotTables, _ := GetTables(tt.conn); !reflect.DeepEqual(gotTables, tt.wantTables) {
-				t.Errorf("GetTables() = %v, want %v", gotTables, tt.wantTables)
-			}
-		})
-	}
-}
 
 func TestGetTablesWithRows(t *testing.T) {
 	conn := getTestConnection()
-	populateTests(conn)
-	defer conn.Close(context.Background())
-	defer clearPopulateTests(conn)
+	initSchema(conn)
+	defer clearSchema(conn)
 	tests := []struct {
 		name       string
-		conn       *pgx.Conn
+		conn       *pgxpool.Pool
 		wantTables []Table
 		wantErr    bool
 	}{
-		{"With tables", conn, []Table{{"simple", 0, []string{}}, {"relation", 0, []string{}}}, false},
+		{"With tables", conn, []Table{{"simple", 0, []Relation{}}, {"relation", 0, []Relation{}}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -62,15 +39,14 @@ func TestGetTablesWithRows(t *testing.T) {
 
 func TestCopyTableToString(t *testing.T) {
 	conn := getTestConnection()
-	populateTests(conn)
-	defer conn.Close(context.Background())
-	defer clearPopulateTests(conn)
+	initSchema(conn)
+	defer clearSchema(conn)
 	populateTestsWithData(conn, "simple", 10)
 
 	tests := []struct {
 		name       string
 		table      string
-		conn       *pgx.Conn
+		conn       *pgxpool.Pool
 		wantResult bool
 		wantErr    bool
 	}{
@@ -83,7 +59,7 @@ func TestCopyTableToString(t *testing.T) {
 				t.Errorf("CopyTableToString() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if strings.Contains(gotResult, "test") == tt.wantResult {
+			if strings.Contains(gotResult, "test") != tt.wantResult {
 				t.Errorf("CopyTableToString() = %v, want %v", gotResult, tt.wantResult)
 			}
 		})
@@ -92,15 +68,14 @@ func TestCopyTableToString(t *testing.T) {
 
 func TestCopyStringToTable(t *testing.T) {
 	conn := getTestConnection()
-	populateTests(conn)
-	defer conn.Close(context.Background())
-	defer clearPopulateTests(conn)
+	initSchema(conn)
+	defer clearSchema(conn)
 
 	tests := []struct {
 		name       string
 		table      string
 		data       string
-		conn       *pgx.Conn
+		conn       *pgxpool.Pool
 		wantResult int
 		wantErr    bool
 	}{
@@ -123,7 +98,7 @@ func TestCopyStringToTable(t *testing.T) {
 	}
 }
 
-func insertedRows(s string, conn *pgx.Conn) int {
+func insertedRows(s string, conn *pgxpool.Pool) int {
 	q := "SELECT count(*) FROM " + s
 	var count int
 	err := conn.QueryRow(context.Background(), q).Scan(&count)

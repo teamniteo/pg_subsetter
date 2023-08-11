@@ -8,8 +8,9 @@ func GetTargetSet(fraction float64, tables []Table) []Table {
 
 	for _, table := range tables {
 		subset = append(subset, Table{
-			Name: table.Name,
-			Rows: int(math.Pow(10, math.Log10(float64(table.Rows))*fraction)),
+			Name:      table.Name,
+			Rows:      int(math.Pow(10, math.Log10(float64(table.Rows))*fraction)),
+			Relations: table.Relations,
 		})
 	}
 

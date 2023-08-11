@@ -37,7 +37,6 @@
               golangci-lint
               postgresql
               process-compose
-              shellcheck
               nixpkgs-fmt
               pgweb
             ];

@@ -1,0 +1,11 @@
+name: vuln
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  vuln:
+    uses: cristalhq/.github/.github/workflows/vuln.yml@v0.4.0

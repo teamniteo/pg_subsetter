@@ -5,30 +5,25 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Table struct {
 	Name      string
 	Rows      int
-	Relations []string
+	Relations []Relation
 }
 
-func GetTables(conn *pgx.Conn) (tables []string, err error) {
-	q := `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';`
-	rows, err := conn.Query(context.Background(), q)
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err == nil {
-			tables = append(tables, name)
-		}
-	}
-	rows.Close()
-	return
-}
-
-func GetTablesWithRows(conn *pgx.Conn) (tables []Table, err error) {
-	q := `SELECT relname, reltuples::int FROM pg_class,information_schema.tables WHERE table_schema = 'public' AND relname = table_name;`
+func GetTablesWithRows(conn *pgxpool.Pool) (tables []Table, err error) {
+	q := `SELECT
+		relname,
+		reltuples::int
+	FROM
+		pg_class,
+		information_schema.tables
+	WHERE
+		table_schema = 'public'
+		AND relname = table_name;`
 	rows, err := conn.Query(context.Background(), q)
 	for rows.Next() {
 		var table Table
@@ -37,6 +32,10 @@ func GetTablesWithRows(conn *pgx.Conn) (tables []Table, err error) {
 			// fix for tables with no rows
 			if table.Rows == -1 {
 				table.Rows = 0
+			}
+			table.Relations, err = GetRelations(table.Name, conn)
+			if err != nil {
+				return nil, err
 			}
 			tables = append(tables, table)
 		}
@@ -47,21 +46,34 @@ func GetTablesWithRows(conn *pgx.Conn) (tables []Table, err error) {
 	return
 }
 
-func CopyTableToString(table string, limit int, conn *pgx.Conn) (result string, err error) {
-	q := fmt.Sprintf(`copy (SELECT * FROM %s order by random() limit %d) to stdout`, table, limit)
+func CopyQueryToString(query string, conn *pgxpool.Pool) (result string, err error) {
+	q := fmt.Sprintf(`copy (%s) to stdout`, query)
 	var buff bytes.Buffer
-	if _, err = conn.PgConn().CopyFrom(context.Background(), &buff, q); err != nil {
+	c, err := conn.Acquire(context.Background())
+	if err != nil {
+		return
+	}
+	if _, err = c.Conn().PgConn().CopyTo(context.Background(), &buff, q); err != nil {
 		return
 	}
 	result = buff.String()
 	return
 }
 
-func CopyStringToTable(table string, data string, conn *pgx.Conn) (err error) {
+func CopyTableToString(table string, limit int, conn *pgxpool.Pool) (result string, err error) {
+	q := fmt.Sprintf(`SELECT * FROM %s order by random() limit %d`, table, limit)
+	return CopyQueryToString(q, conn)
+}
+
+func CopyStringToTable(table string, data string, conn *pgxpool.Pool) (err error) {
 	q := fmt.Sprintf(`copy %s from stdin`, table)
 	var buff bytes.Buffer
 	buff.WriteString(data)
-	if _, err = conn.PgConn().CopyFrom(context.Background(), &buff, q); err != nil {
+	c, err := conn.Acquire(context.Background())
+	if err != nil {
+		return
+	}
+	if _, err = c.Conn().PgConn().CopyFrom(context.Background(), &buff, q); err != nil {
 		return
 	}
 

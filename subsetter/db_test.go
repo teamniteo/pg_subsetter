@@ -4,24 +4,52 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func getTestConnection() *pgx.Conn {
+var testConnSrc *pgxpool.Pool
+var onceTestSrc sync.Once
+var testConnTrg *pgxpool.Pool
+var onceTestTrg sync.Once
+
+func getTestConnection() *pgxpool.Pool {
 	DATABASE_URL := os.Getenv("DATABASE_URL")
 	if DATABASE_URL == "" {
 		DATABASE_URL = "postgres://test_source@localhost:5432/test_source?sslmode=disable"
 	}
 
-	conn, err := pgx.Connect(context.Background(), DATABASE_URL)
-	if err != nil {
-		panic(err)
-	}
-	return conn
+	onceTestSrc.Do(func() {
+		c, err := pgxpool.New(context.Background(), DATABASE_URL)
+		if err != nil {
+			panic(err)
+		}
+		testConnSrc = c
+	})
+
+	return testConnSrc
 }
 
-func populateTests(conn *pgx.Conn) {
+func getTestConnectionDst() *pgxpool.Pool {
+	DATABASE_URL := os.Getenv("DATABASE_URL")
+	if DATABASE_URL == "" {
+		DATABASE_URL = "postgres://test_target@localhost:5432/test_target?sslmode=disable"
+	}
+
+	onceTestTrg.Do(func() {
+		c, err := pgxpool.New(context.Background(), DATABASE_URL)
+		if err != nil {
+			panic(err)
+		}
+		testConnTrg = c
+	})
+
+	return testConnTrg
+}
+
+func initSchema(conn *pgxpool.Pool) {
+
 	_, err := conn.Exec(context.Background(), `
 		CREATE TABLE simple (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -41,7 +69,7 @@ func populateTests(conn *pgx.Conn) {
 	}
 }
 
-func populateTestsWithData(conn *pgx.Conn, table string, size int) {
+func populateTestsWithData(conn *pgxpool.Pool, table string, size int) {
 	for i := 0; i < size; i++ {
 		query := fmt.Sprintf("INSERT INTO %s (text) VALUES ('test%d') RETURNING id", table, i)
 		var row string
@@ -58,7 +86,7 @@ func populateTestsWithData(conn *pgx.Conn, table string, size int) {
 	}
 }
 
-func clearPopulateTests(conn *pgx.Conn) {
+func clearSchema(conn *pgxpool.Pool) {
 	_, err := conn.Exec(context.Background(), `
 		ALTER TABLE relation DROP CONSTRAINT relation_simple_fk;
 		DROP TABLE simple;
