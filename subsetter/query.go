@@ -9,8 +9,9 @@ import (
 )
 
 type Table struct {
-	Name string
-	Rows int
+	Name      string
+	Rows      int
+	Relations []string
 }
 
 func GetTables(conn *pgx.Conn) (tables []string, err error) {
@@ -57,7 +58,7 @@ func CopyTableToString(table string, limit int, conn *pgx.Conn) (result string, 
 }
 
 func CopyStringToTable(table string, data string, conn *pgx.Conn) (err error) {
-	q := fmt.Sprintf(`copy %s from stdout`, table)
+	q := fmt.Sprintf(`copy %s from stdin`, table)
 	var buff bytes.Buffer
 	buff.WriteString(data)
 	if _, err = conn.PgConn().CopyFrom(context.Background(), &buff, q); err != nil {
