@@ -14,7 +14,7 @@ is-postgres-running:
 
 .PHONY: pgweb
 pgweb:is-postgres-running
-	@pgweb --url "postgres://test_source@localhost:5432/test_source?sslmode=disable"
+	@pgweb --url "postgres://test_target@localhost:5432/test_target?sslmode=disable"
 
 build:
 	rm -rf dist

@@ -1,7 +1,6 @@
 package subsetter
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -89,7 +88,7 @@ func TestCopyStringToTable(t *testing.T) {
 				t.Errorf("CopyStringToTable() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			gotInserted := insertedRows(tt.table, tt.conn)
+			gotInserted, _ := CountRows(tt.table, tt.conn)
 			if tt.wantResult != gotInserted {
 				t.Errorf("CopyStringToTable() = %v, want %v", tt.wantResult, tt.wantResult)
 			}
@@ -98,12 +97,29 @@ func TestCopyStringToTable(t *testing.T) {
 	}
 }
 
-func insertedRows(s string, conn *pgxpool.Pool) int {
-	q := "SELECT count(*) FROM " + s
-	var count int
-	err := conn.QueryRow(context.Background(), q).Scan(&count)
-	if err != nil {
-		panic(err)
+func TestDeleteRows(t *testing.T) {
+
+	conn := getTestConnection()
+	initSchema(conn)
+	defer clearSchema(conn)
+	tests := []struct {
+		name    string
+		conn    *pgxpool.Pool
+		table   string
+		where   string
+		count   int
+		wantErr bool
+	}{
+		{"With tables", conn, "simple", "1 = 1", 0, false},
 	}
-	return count
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := DeleteRows(tt.table, tt.where, tt.conn); (err != nil) != tt.wantErr {
+				t.Errorf("DeleteRows() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if gotCount, _ := CountRows(tt.table, tt.conn); gotCount != tt.count {
+				t.Errorf("DeleteRows() = %v, want %v", gotCount, tt.count)
+			}
+		})
+	}
 }

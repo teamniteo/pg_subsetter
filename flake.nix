@@ -3,7 +3,7 @@
     allowed-users = [ "@wheel" "@staff" ]; # allow compiling on every device/machine
   };
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/release-23.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
   };
   outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
@@ -35,7 +35,7 @@
               go
               goreleaser
               golangci-lint
-              postgresql
+              postgresql_15
               process-compose
               nixpkgs-fmt
               pgweb
