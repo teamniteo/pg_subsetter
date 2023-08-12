@@ -4,14 +4,26 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/samber/lo"
 )
 
 type Table struct {
 	Name      string
 	Rows      int
 	Relations []Relation
+}
+
+func (t *Table) RelationNames() (names string) {
+	rel := lo.Map(t.Relations, func(r Relation, _ int) string {
+		return r.PrimaryTable + ">" + r.PrimaryColumn
+	})
+	if len(rel) > 0 {
+		return strings.Join(rel, ", ")
+	}
+	return "none"
 }
 
 func GetTablesWithRows(conn *pgxpool.Pool) (tables []Table, err error) {
@@ -46,6 +58,27 @@ func GetTablesWithRows(conn *pgxpool.Pool) (tables []Table, err error) {
 	return
 }
 
+func GetKeys(q string, conn *pgxpool.Pool) (ids []string, err error) {
+	rows, err := conn.Query(context.Background(), q)
+	for rows.Next() {
+		var id string
+
+		if err := rows.Scan(&id); err == nil {
+			ids = append(ids, id)
+		}
+
+	}
+	rows.Close()
+
+	return
+}
+
+func DeleteRows(table string, where string, conn *pgxpool.Pool) (err error) {
+	q := fmt.Sprintf(`DELETE FROM %s WHERE %s`, table, where)
+	_, err = conn.Exec(context.Background(), q)
+	return
+}
+
 func CopyQueryToString(query string, conn *pgxpool.Pool) (result string, err error) {
 	q := fmt.Sprintf(`copy (%s) to stdout`, query)
 	var buff bytes.Buffer
@@ -53,10 +86,12 @@ func CopyQueryToString(query string, conn *pgxpool.Pool) (result string, err err
 	if err != nil {
 		return
 	}
+	defer c.Release()
 	if _, err = c.Conn().PgConn().CopyTo(context.Background(), &buff, q); err != nil {
 		return
 	}
 	result = buff.String()
+
 	return
 }
 
@@ -73,9 +108,20 @@ func CopyStringToTable(table string, data string, conn *pgxpool.Pool) (err error
 	if err != nil {
 		return
 	}
+	defer c.Release()
+
 	if _, err = c.Conn().PgConn().CopyFrom(context.Background(), &buff, q); err != nil {
 		return
 	}
 
+	return
+}
+
+func CountRows(s string, conn *pgxpool.Pool) (count int, err error) {
+	q := "SELECT count(*) FROM " + s
+	err = conn.QueryRow(context.Background(), q).Scan(&count)
+	if err != nil {
+		return
+	}
 	return
 }

@@ -1,17 +1,22 @@
 before:
   hooks:
     - go mod tidy
+universal_binaries:
+  - replace: true
+  
 builds:
   - env:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
       - darwin
     main: ./cli
-    
+    goarch:
+      - amd64
+      - arm64
 archives:
   - format: tar.gz
+    strip_parent_binary_folder: true
     # this name template makes the OS and Arch compatible with the results of uname.
     name_template: >-
       {{ .ProjectName }}_

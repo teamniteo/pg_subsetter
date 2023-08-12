@@ -10,18 +10,32 @@ import (
 	"niteo.co/subsetter/subsetter"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 var src = flag.String("src", "", "Source database DSN")
 var dst = flag.String("dst", "", "Destination database DSN")
 var fraction = flag.Float64("f", 0.05, "Fraction of rows to copy")
 var verbose = flag.Bool("verbose", true, "Show more information during sync")
-var forceSync arrayForce
+var ver = flag.Bool("v", false, "Release information")
+var extraInclude arrayExtra
+var extraExclude arrayExtra
 
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
-	flag.Var(&forceSync, "force", "Query to copy required tables (users: id = 1)")
+	flag.Var(&extraInclude, "include", "Query to copy required tables 'users: id = 1', can be used multiple times")
+	flag.Var(&extraExclude, "exclude", "Query to ignore tables 'users: id = 1', can be used multiple times")
 	flag.Parse()
+
+	if *ver {
+		log.Info().Str("version", version).Str("commit", commit).Str("date", date).Msg("Version")
+		os.Exit(0)
+	}
 
 	if *src == "" || *dst == "" {
 		log.Fatal().Msg("Source and destination DSNs are required")
@@ -31,20 +45,23 @@ func main() {
 		log.Fatal().Msg("Fraction must be between 0 and 1")
 	}
 
-	if len(forceSync) > 0 {
-		log.Info().Str("forced", forceSync.String()).Msg("Forcing sync for tables")
+	if len(extraInclude) > 0 {
+		log.Info().Str("include", extraInclude.String()).Msg("Forcibly including")
+	}
+	if len(extraExclude) > 0 {
+		log.Info().Str("exclude", extraExclude.String()).Msg("Forcibly ignoring")
 	}
 
-	s, err := subsetter.NewSync(*src, *dst, *fraction, forceSync, *verbose)
+	s, err := subsetter.NewSync(*src, *dst, *fraction, extraInclude, extraExclude, *verbose)
 	if err != nil {
-		log.Fatal().Stack().Err(err).Msg("Failed to configure sync")
+		log.Fatal().Err(err).Msg("Failed to configure sync")
 	}
 
 	defer s.Close()
 
 	err = s.Sync()
 	if err != nil {
-		log.Fatal().Stack().Err(err).Msg("Failed to sync")
+		log.Fatal().Err(err).Msg("Failed to sync")
 	}
 
 }
