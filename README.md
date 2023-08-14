@@ -66,5 +66,8 @@ pg-subsetter \
 
 # Installing
 
-```curl -Ls https://github.com/teamniteo/pg-subsetter/releases/latest/download/pg-subsetter_Linux_x86_64.tar.gz | tar -xz && mv pg-subsetter /usr/bin
+```bash
+curl -Ls https://github.com/teamniteo/pg-subsetter/releases/latest/download/pg-subsetter_Linux_x86_64.tar.gz | tar -xz && mv pg-subsetter /usr/bin
 ```
+
+For other downloads see releases.
