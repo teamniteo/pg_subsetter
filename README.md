@@ -1,6 +1,6 @@
 # pg-subsetter
 
-[![lint](https://github.com/teamniteo/pg-subsetter/actions/workflows/lint.yml/badge.svg)](https://github.com/teamniteo/pg-subsetter/actions/workflows/lint.yml) [![build](https://github.com/teamniteo/pg-subsetter/actions/workflows/go.yml/badge.svg)](https://github.com/teamniteo/pg-subsetter/actions/workflows/go.yml) [![vuln](https://github.com/teamniteo/pg-subsetter/actions/workflows/vuln.yml/badge.svg)](https://github.com/teamniteo/pg-subsetter/actions/workflows/vuln.yml)
+[![lint](https://github.com/teamniteo/pg-subsetter/actions/workflows/lint.yml/badge.svg)](https://github.com/teamniteo/pg-subsetter/actions/workflows/lint.yml) [![build](https://github.com/teamniteo/pg-subsetter/actions/workflows/go.yml/badge.svg)](https://github.com/teamniteo/pg-subsetter/actions/workflows/go.yml) [![vuln](https://github.com/teamniteo/pg-subsetter/actions/workflows/vuln.yml/badge.svg)](https://github.com/teamniteo/pg-subsetter/actions/workflows/vuln.yml) [![release](https://github.com/teamniteo/pg-subsetter/actions/workflows/release.yml/badge.svg)](https://github.com/teamniteo/pg-subsetter/actions/workflows/release.yml)
 
 
 `pg-subsetter` is a tool designed to synchronize a fraction of a PostgreSQL database to another PostgreSQL database on the fly, it does not copy the SCHEMA. 
@@ -47,7 +47,7 @@ Usage of subsetter:
 Prepare schema in target database:
 
 ```bash
-pg_dump --schema-only -n public -f schemadump.sql "postgres://test_source@localhost:5432/test_source?sslmode=disable"
+pg_dump --schema-only --no-owner --no-acl -n public -f schemadump.sql "postgres://test_source@localhost:5432/test_source?sslmode=disable"
 psql -f schemadump.sql "postgres://test_target@localhost:5432/test_target?sslmode=disable"
 ```
 

@@ -2,6 +2,7 @@ package subsetter
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -23,6 +24,13 @@ type Sync struct {
 type Rule struct {
 	Table string
 	Where string
+}
+
+func (r Rule) Query() string {
+	if r.Where == "" {
+		return fmt.Sprintf("SELECT * FROM %s", r.Table)
+	}
+	return fmt.Sprintf("SELECT * FROM %s WHERE %s", r.Table, r.Where)
 }
 
 func NewSync(source string, target string, fraction float64, include []Rule, exclude []Rule, verbose bool) (*Sync, error) {
@@ -119,7 +127,7 @@ func (s *Sync) CopyTables(tables []Table) (err error) {
 			if include.Table == table.Name {
 				log.Info().Str("query", include.Where).Msgf("Selecting forced rows for table %s", table.Name)
 				var data string
-				if data, err = CopyQueryToString(include.Where, s.source); err != nil {
+				if data, err = CopyQueryToString(include.Query(), s.source); err != nil {
 					return errors.Wrapf(err, "Error copying forced rows for table %s", table.Name)
 				}
 				if err = CopyStringToTable(table.Name, data, s.destination); err != nil {
@@ -152,7 +160,7 @@ func (s *Sync) CopyTables(tables []Table) (err error) {
 			}
 			if err = CopyStringToTable(relation.PrimaryTable, data, s.destination); err != nil {
 				if condition, ok := err.(*pgconn.PgError); ok && condition.Code == "23503" {
-					log.Warn().Msgf("Skipping %s because of foreign key violation", relation.PrimaryTable)
+					log.Warn().Msgf("Skipping %s because of cyclic foreign key", relation.PrimaryTable)
 					err = nil
 				} else {
 					return errors.Wrapf(err, "Error inserting related table %s", relation.PrimaryTable)
