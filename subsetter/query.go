@@ -73,6 +73,23 @@ func GetKeys(q string, conn *pgxpool.Pool) (ids []string, err error) {
 	return
 }
 
+func GetPrimaryKeyName(table string, conn *pgxpool.Pool) (name string, err error) {
+	q := fmt.Sprintf(`SELECT a.attname
+	FROM   pg_index i
+	JOIN   pg_attribute a ON a.attrelid = i.indrelid
+	AND a.attnum = ANY(i.indkey)
+	WHERE  i.indrelid = '%s'::regclass
+	AND    i.indisprimary;`, table)
+	rows, err := conn.Query(context.Background(), q)
+	for rows.Next() {
+		if err := rows.Scan(&name); err != nil {
+			return "", err
+		}
+	}
+	rows.Close()
+	return
+}
+
 func DeleteRows(table string, where string, conn *pgxpool.Pool) (err error) {
 	q := fmt.Sprintf(`DELETE FROM %s WHERE %s`, table, where)
 	_, err = conn.Exec(context.Background(), q)
@@ -95,8 +112,8 @@ func CopyQueryToString(query string, conn *pgxpool.Pool) (result string, err err
 	return
 }
 
-func CopyTableToString(table string, limit int, conn *pgxpool.Pool) (result string, err error) {
-	q := fmt.Sprintf(`SELECT * FROM %s order by random() limit %d`, table, limit)
+func CopyTableToString(table string, limit int, where string, conn *pgxpool.Pool) (result string, err error) {
+	q := fmt.Sprintf(`SELECT * FROM %s %s order by random() limit %d`, table, where, limit)
 	return CopyQueryToString(q, conn)
 }
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,12 +20,7 @@ type Relation struct {
 func (r *Relation) Query(subset []string) string {
 
 	subset = lo.Map(subset, func(s string, _ int) string {
-
-		// if string is a number, don't quote it
-		if _, err := strconv.Atoi(s); err == nil {
-			return s
-		}
-		return fmt.Sprintf(`'%s'`, s)
+		return QuoteString(s)
 	})
 
 	return fmt.Sprintf(`SELECT * FROM %s WHERE %s IN (%s)`, r.PrimaryTable, r.PrimaryColumn, strings.Join(subset, ","))

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,7 +27,11 @@ type Rule struct {
 	Where string
 }
 
-func (r Rule) Query() string {
+func (r *Rule) String() string {
+	return fmt.Sprintf("%s:%s", r.Table, r.Where)
+}
+
+func (r *Rule) Query() string {
 	if r.Where == "" {
 		return fmt.Sprintf("SELECT * FROM %s", r.Table)
 	}
@@ -71,8 +76,28 @@ func (s *Sync) Close() {
 
 // copyTableData copies the data from a table in the source database to the destination database
 func copyTableData(table Table, source *pgxpool.Pool, destination *pgxpool.Pool) (err error) {
+	// Backtrace the inserted ids from main table to related table
+
+	// Get primary keys
+	primaryKeyName, err := GetPrimaryKeyName(table.Name, source)
+	if err != nil {
+		return errors.Wrapf(err, "Error getting primary key for %s", table.Name)
+	}
+
+	var ignoredPrimaryKeys []string
+	if ignoredPrimaryKeys, err = GetKeys(fmt.Sprintf("SELECT %s FROM %s", primaryKeyName, table.Name), destination); err != nil {
+		return errors.Wrapf(err, "Error getting primary keys for %s", table.Name)
+	}
+	ignoredPrimaryQuery := ""
+	if len(ignoredPrimaryKeys) > 0 {
+		keys := lo.Map(ignoredPrimaryKeys, func(key string, _ int) string {
+			return QuoteString(key)
+		})
+		ignoredPrimaryQuery = fmt.Sprintf("WHERE %s NOT IN (%s)", primaryKeyName, strings.Join(keys, ","))
+	}
+
 	var data string
-	if data, err = CopyTableToString(table.Name, table.Rows, source); err != nil {
+	if data, err = CopyTableToString(table.Name, table.Rows, ignoredPrimaryQuery, source); err != nil {
 		log.Error().Err(err).Msgf("Error copying table %s", table.Name)
 		return
 	}
@@ -95,17 +120,17 @@ func ViableSubset(tables []Table) (subset []Table) {
 		return len(table.Relations) > 0
 	})
 
-	var excludedTables []string
+	var relatedTables []string
 	for _, table := range tablesWithRelations {
 		for _, relation := range table.Relations {
 			if table.Name != relation.PrimaryTable {
-				excludedTables = append(excludedTables, relation.PrimaryTable)
+				relatedTables = append(relatedTables, relation.PrimaryTable)
 			}
 		}
 	}
 
 	subset = lo.Filter(subset, func(table Table, _ int) bool {
-		return !lo.Contains(excludedTables, table.Name)
+		return !lo.Contains(relatedTables, table.Name)
 	})
 
 	sort.Slice(subset, func(i, j int) bool {
@@ -117,15 +142,19 @@ func ViableSubset(tables []Table) (subset []Table) {
 // CopyTables copies the data from a list of tables in the source database to the destination database
 func (s *Sync) CopyTables(tables []Table) (err error) {
 
-	for _, table := range tables {
+	excludedTables := lo.Map(s.exclude, func(rule Rule, _ int) string {
+		return rule.Table
+	})
 
-		if err = copyTableData(table, s.source, s.destination); err != nil {
-			return errors.Wrapf(err, "Error copying table %s", table.Name)
-		}
+	tables = lo.Filter(tables, func(table Table, _ int) bool {
+		return !lo.Contains(excludedTables, table.Name)
+	})
+
+	for _, table := range tables {
 
 		for _, include := range s.include {
 			if include.Table == table.Name {
-				log.Info().Str("query", include.Where).Msgf("Selecting forced rows for table %s", table.Name)
+				log.Info().Str("query", include.Where).Msgf("Copying forced rows for table %s", table.Name)
 				var data string
 				if data, err = CopyQueryToString(include.Query(), s.source); err != nil {
 					return errors.Wrapf(err, "Error copying forced rows for table %s", table.Name)
@@ -134,6 +163,13 @@ func (s *Sync) CopyTables(tables []Table) (err error) {
 					return errors.Wrapf(err, "Error inserting forced rows for table %s", table.Name)
 				}
 			}
+		}
+	}
+
+	for _, table := range tables {
+		log.Info().Msgf("Preparing %s", table.Name)
+		if err = copyTableData(table, s.source, s.destination); err != nil {
+			return errors.Wrapf(err, "Error copying table %s", table.Name)
 		}
 
 		for _, exclude := range s.exclude {
@@ -149,7 +185,12 @@ func (s *Sync) CopyTables(tables []Table) (err error) {
 		log.Info().Int("count", count).Msgf("Copied table %s", table.Name)
 
 		for _, relation := range table.Relations {
+			if lo.Contains(excludedTables, relation.PrimaryTable) {
+				continue
+			}
+
 			// Backtrace the inserted ids from main table to related table
+			log.Info().Msgf("Preparing %s for %s", relation.PrimaryTable, table.Name)
 			var pKeys []string
 			if pKeys, err = GetKeys(relation.PrimaryQuery(), s.destination); err != nil {
 				return errors.Wrapf(err, "Error getting primary keys for %s", relation.PrimaryTable)
@@ -160,7 +201,10 @@ func (s *Sync) CopyTables(tables []Table) (err error) {
 			}
 			if err = CopyStringToTable(relation.PrimaryTable, data, s.destination); err != nil {
 				if condition, ok := err.(*pgconn.PgError); ok && condition.Code == "23503" {
-					log.Warn().Msgf("Skipping %s because of cyclic foreign key", relation.PrimaryTable)
+					log.Warn().AnErr("sql", err).Msgf("Skipping %s because of cyclic foreign key", relation.PrimaryTable)
+					err = nil
+				} else if condition, ok := err.(*pgconn.PgError); ok && condition.Code == "23505" {
+					log.Warn().AnErr("sql", err).Msgf("Skipping %s because of present foreign key", relation.PrimaryTable)
 					err = nil
 				} else {
 					return errors.Wrapf(err, "Error inserting related table %s", relation.PrimaryTable)
