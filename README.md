@@ -28,11 +28,11 @@ Usage of subsetter:
   -dst string
     	Destination database DSN
   -exclude value
-    	Query to ignore tables 'users: id = 1', can be used multiple times
+    	Query to ignore tables, can be used multiple times; 'users: id = 123' for a specific user, 'users: 1=1' for all users
   -f float
     	Fraction of rows to copy (default 0.05)
   -include value
-    	Query to copy required tables 'users: id = 1', can be used multiple times
+    	Query to copy required tables, can be used multiple times; 'users: id = 123' for a specific user, 'users: 1=1' for all users
   -src string
     	Source database DSN
   -v	Release information
