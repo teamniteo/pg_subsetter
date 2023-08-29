@@ -51,5 +51,5 @@ jobs:
       - name: Upload assets
         uses: actions/upload-artifact@v3
         with:
-          name: pg-subsetter
+          name: pg_subsetter
           path: dist/*
