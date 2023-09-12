@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 )
 
@@ -16,16 +17,27 @@ type Table struct {
 	Relations []Relation
 }
 
-func (t *Table) RelationNames() (names string) {
-	rel := lo.Map(t.Relations, func(r Relation, _ int) string {
+// RelationNames returns a list of relation names in human readable format.
+func (t *Table) RelationNames() (names []string) {
+	names = lo.Map(t.Relations, func(r Relation, _ int) string {
 		return r.PrimaryTable + ">" + r.PrimaryColumn
 	})
-	if len(rel) > 0 {
-		return strings.Join(rel, ", ")
-	}
-	return "none"
+
+	return
 }
 
+// IsSelfRelated returns true if a table is self related.
+func (t *Table) IsSelfRelated() bool {
+	for _, r := range t.Relations {
+		if r.IsSelfRelated() {
+			return true
+		}
+	}
+	return false
+}
+
+// GetTablesWithRows returns a list of tables with the number of rows in each table.
+// Warning reltuples used to dermine size is an estimate of the number of rows in the table and can be zero for small tables.
 func GetTablesWithRows(conn *pgxpool.Pool) (tables []Table, err error) {
 	q := `SELECT
 		relname,
@@ -41,14 +53,30 @@ func GetTablesWithRows(conn *pgxpool.Pool) (tables []Table, err error) {
 		var table Table
 
 		if err := rows.Scan(&table.Name, &table.Rows); err == nil {
+			// skip system tables that are marked public
+			if strings.HasPrefix(table.Name, "pg_") {
+				continue
+			}
+
 			// fix for tables with no rows
 			if table.Rows == -1 {
 				table.Rows = 0
 			}
+
+			// Do a precise count for small tables
+			if table.Rows == 0 {
+				table.Rows, err = CountRows(table.Name, conn)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			// Get relations
 			table.Relations, err = GetRelations(table.Name, conn)
 			if err != nil {
 				return nil, err
 			}
+
 			tables = append(tables, table)
 		}
 
@@ -58,6 +86,7 @@ func GetTablesWithRows(conn *pgxpool.Pool) (tables []Table, err error) {
 	return
 }
 
+// GetKeys returns a list of keys from a query.
 func GetKeys(q string, conn *pgxpool.Pool) (ids []string, err error) {
 	rows, err := conn.Query(context.Background(), q)
 	for rows.Next() {
@@ -73,6 +102,7 @@ func GetKeys(q string, conn *pgxpool.Pool) (ids []string, err error) {
 	return
 }
 
+// GetPrimaryKeyName returns the name of the primary key for a table.
 func GetPrimaryKeyName(table string, conn *pgxpool.Pool) (name string, err error) {
 	q := fmt.Sprintf(`SELECT a.attname
 	FROM   pg_index i
@@ -90,12 +120,14 @@ func GetPrimaryKeyName(table string, conn *pgxpool.Pool) (name string, err error
 	return
 }
 
+// DeleteRows deletes rows from a table.
 func DeleteRows(table string, where string, conn *pgxpool.Pool) (err error) {
 	q := fmt.Sprintf(`DELETE FROM %s WHERE %s`, table, where)
 	_, err = conn.Exec(context.Background(), q)
 	return
 }
 
+// CopyQueryToString copies a query to a string.
 func CopyQueryToString(query string, conn *pgxpool.Pool) (result string, err error) {
 	q := fmt.Sprintf(`copy (%s) to stdout`, query)
 	var buff bytes.Buffer
@@ -112,11 +144,14 @@ func CopyQueryToString(query string, conn *pgxpool.Pool) (result string, err err
 	return
 }
 
-func CopyTableToString(table string, limit int, where string, conn *pgxpool.Pool) (result string, err error) {
-	q := fmt.Sprintf(`SELECT * FROM %s %s order by random() limit %d`, table, where, limit)
+// CopyTableToString copies a table to a string.
+func CopyTableToString(table string, limit string, where string, conn *pgxpool.Pool) (result string, err error) {
+	q := fmt.Sprintf(`SELECT * FROM %s %s order by random() %s`, table, where, limit)
+	log.Debug().Msgf("Query: %s", q)
 	return CopyQueryToString(q, conn)
 }
 
+// CopyStringToTable copies a string to a table.
 func CopyStringToTable(table string, data string, conn *pgxpool.Pool) (err error) {
 	q := fmt.Sprintf(`copy %s from stdin`, table)
 	var buff bytes.Buffer
@@ -134,6 +169,7 @@ func CopyStringToTable(table string, data string, conn *pgxpool.Pool) (err error
 	return
 }
 
+// CountRows returns the number of rows in a table.
 func CountRows(s string, conn *pgxpool.Pool) (count int, err error) {
 	q := "SELECT count(*) FROM " + s
 	err = conn.QueryRow(context.Background(), q).Scan(&count)

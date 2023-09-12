@@ -53,7 +53,7 @@ func TestCopyTableToString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotResult, err := CopyTableToString(tt.table, 10, "", tt.conn)
+			gotResult, err := CopyTableToString(tt.table, "", "", tt.conn)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CopyTableToString() error = %v, wantErr %v", err, tt.wantErr)
 				return

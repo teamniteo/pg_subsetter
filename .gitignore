@@ -3,3 +3,6 @@ bin
 dist/
 *.sql
 .nix-profile*
+*.sh
+.devenv
+.pre-commit-config.yaml

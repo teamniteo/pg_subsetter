@@ -19,7 +19,7 @@ var (
 var src = flag.String("src", "", "Source database DSN")
 var dst = flag.String("dst", "", "Destination database DSN")
 var fraction = flag.Float64("f", 0.05, "Fraction of rows to copy")
-var verbose = flag.Bool("verbose", true, "Show more information during sync")
+var verbose = flag.Bool("verbose", false, "Show more information during sync")
 var ver = flag.Bool("v", false, "Release information")
 var extraInclude arrayExtra
 var extraExclude arrayExtra
@@ -45,11 +45,17 @@ func main() {
 		log.Fatal().Msg("Fraction must be between 0 and 1")
 	}
 
+	if *verbose {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
 	if len(extraInclude) > 0 {
-		log.Info().Str("include", extraInclude.String()).Msg("Forcibly including")
+		log.Info().Str("include", extraInclude.String()).Msg("Forcibly")
 	}
 	if len(extraExclude) > 0 {
-		log.Info().Str("exclude", extraExclude.String()).Msg("Forcibly ignoring")
+		log.Info().Str("exclude", extraExclude.String()).Msg("Forcibly")
 	}
 
 	s, err := subsetter.NewSync(*src, *dst, *fraction, extraInclude, extraExclude, *verbose)

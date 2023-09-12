@@ -17,6 +17,10 @@ type Relation struct {
 	ForeignColumn string
 }
 
+func (r *Relation) IsSelfRelated() bool {
+	return r.PrimaryTable == r.ForeignTable
+}
+
 func (r *Relation) Query(subset []string) string {
 
 	subset = lo.Map(subset, func(s string, _ int) string {
@@ -30,13 +34,15 @@ func (r *Relation) PrimaryQuery() string {
 	return fmt.Sprintf(`SELECT %s FROM %s`, r.ForeignColumn, r.ForeignTable)
 }
 
-type RelationInfo struct {
-	TableName    string
+// RelationRaw is a raw representation of a relation in the database.
+type RelationRaw struct {
+	PrimaryTable string
 	ForeignTable string
 	SQL          string
 }
 
-func (r *RelationInfo) toRelation() Relation {
+// toRelation converts a RelationRaw to a Relation.
+func (r *RelationRaw) toRelation() Relation {
 	var rel Relation
 	re := regexp.MustCompile(`FOREIGN KEY \((\w+)\) REFERENCES (\w+)\((\w+)\).*`)
 	matches := re.FindStringSubmatch(r.SQL)
@@ -45,7 +51,7 @@ func (r *RelationInfo) toRelation() Relation {
 		rel.ForeignTable = matches[2]
 		rel.ForeignColumn = matches[3]
 	}
-	rel.PrimaryTable = r.TableName
+	rel.PrimaryTable = r.PrimaryTable
 	return rel
 }
 
@@ -53,7 +59,7 @@ func (r *RelationInfo) toRelation() Relation {
 func GetRelations(table string, conn *pgxpool.Pool) (relations []Relation, err error) {
 
 	q := `SELECT
-		conrelid::regclass AS table_name,
+		conrelid::regclass AS primary_table,
 		confrelid::regclass AS refrerenced_table,
 		pg_get_constraintdef(c.oid, TRUE) AS sql
 	FROM
@@ -70,17 +76,17 @@ func GetRelations(table string, conn *pgxpool.Pool) (relations []Relation, err e
 	defer rows.Close()
 
 	for rows.Next() {
-		var rel RelationInfo
+		var rel RelationRaw
 
-		err = rows.Scan(&rel.TableName, &rel.ForeignTable, &rel.SQL)
+		err = rows.Scan(&rel.PrimaryTable, &rel.ForeignTable, &rel.SQL)
 		if err != nil {
 			return
 		}
-		relations = append(relations, rel.toRelation())
+		if table == rel.PrimaryTable {
+			relations = append(relations, rel.toRelation())
+		}
+
 	}
-	relations = lo.Filter(relations, func(rel Relation, _ int) bool {
-		return rel.ForeignTable == table
-	})
 
 	return
 }

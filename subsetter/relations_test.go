@@ -46,33 +46,33 @@ func TestRelation_Query(t *testing.T) {
 	}
 }
 
-func TestRelationInfo_toRelation(t *testing.T) {
+func TestRelationRaw_toRelation(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		fields RelationInfo
+		fields RelationRaw
 		want   Relation
 	}{
 		{
 			"Simple",
-			RelationInfo{"relation", "simple", "FOREIGN KEY (simple_id) REFERENCES simple(id)"},
+			RelationRaw{"relation", "simple", "FOREIGN KEY (simple_id) REFERENCES simple(id)"},
 			Relation{"relation", "simple_id", "simple", "id"},
 		},
 		{
 			"Simple with cascade",
-			RelationInfo{"relation", "simple", "FOREIGN KEY (simple_id) REFERENCES simple(id) ON DELETE CASCADE"},
+			RelationRaw{"relation", "simple", "FOREIGN KEY (simple_id) REFERENCES simple(id) ON DELETE CASCADE"},
 			Relation{"relation", "simple_id", "simple", "id"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RelationInfo{
-				TableName:    tt.fields.TableName,
+			r := &RelationRaw{
+				PrimaryTable: tt.fields.PrimaryTable,
 				ForeignTable: tt.fields.ForeignTable,
 				SQL:          tt.fields.SQL,
 			}
 			if got := r.toRelation(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("RelationInfo.toRelation() = %v, want %v", spew.Sdump(got), spew.Sdump(tt.want))
+				t.Errorf("RelationRaw.toRelation() = %v, want %v", spew.Sdump(got), spew.Sdump(tt.want))
 			}
 		})
 	}
