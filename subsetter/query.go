@@ -36,6 +36,13 @@ func (t *Table) IsSelfRelated() bool {
 	return false
 }
 
+// IsSelfRelated returns true if a table is self related.
+func TableByName(tables []Table, name string) Table {
+	return lo.Filter(tables, func(table Table, _ int) bool {
+		return table.Name == name
+	})[0]
+}
+
 // GetTablesWithRows returns a list of tables with the number of rows in each table.
 // Warning reltuples used to dermine size is an estimate of the number of rows in the table and can be zero for small tables.
 func GetTablesWithRows(conn *pgxpool.Pool) (tables []Table, err error) {

@@ -28,8 +28,8 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
-	flag.Var(&extraInclude, "include", "Query to copy required tables 'users: id = 1', can be used multiple times")
-	flag.Var(&extraExclude, "exclude", "Query to ignore tables 'users: id = 1', can be used multiple times")
+	flag.Var(&extraInclude, "include", "Query to copy required rows 'users: id = 1', can be used multiple times")
+	flag.Var(&extraExclude, "exclude", "Query to ignore tables 'users: all', can be used multiple times")
 	flag.Parse()
 
 	if *ver {

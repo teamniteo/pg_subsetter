@@ -22,8 +22,8 @@ func TestTableGraph(t *testing.T) {
 
 	got, _ := TableGraph("users", relations)
 
-	if want, _ := lo.Last(got); want != "users" {
-		t.Fatalf("TableGraph() = %v, want %v", got, "users")
+	if want, _ := lo.Nth(got, 0); want != "users" {
+		t.Fatalf("TableGraph() = %v, want %v", got, want)
 	}
 
 }

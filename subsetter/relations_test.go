@@ -18,7 +18,7 @@ func TestGetRelations(t *testing.T) {
 		conn          *pgxpool.Pool
 		wantRelations []Relation
 	}{
-		{"With relation", "simple", conn, []Relation{{"relation", "simple_id", "simple", "id"}}},
+		{"With relation", "relation", conn, []Relation{{"relation", "simple_id", "simple", "id"}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

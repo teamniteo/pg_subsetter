@@ -28,16 +28,16 @@ Usage of subsetter:
   -dst string
     	Destination database DSN
   -exclude value
-    	Query to ignore tables, can be used multiple times; 'users: id = 123' for a specific user, 'users: 1=1' for all users
+    	Query to ignore tables 'users: all', can be used multiple times
   -f float
     	Fraction of rows to copy (default 0.05)
   -include value
-    	Query to copy required tables, can be used multiple times; 'users: id = 123' for a specific user, 'users: 1=1' for all users
+    	Query to copy required rows 'users: id = 1', can be used multiple times
   -src string
     	Source database DSN
   -v	Release information
   -verbose
-    	Show more information during sync (default true)
+    	Show more information during sync
 ```
 
 
@@ -60,7 +60,7 @@ pg_subsetter \
       -f 0.5
       -include "user: id=1"
       -include "group: id=1"
-      -exclude "domains: domain_name ilike '%.si'"
+      -exclude "domains: all"
 
 ```
 
