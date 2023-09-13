@@ -59,7 +59,7 @@ pg_subsetter \
       -dst "postgres://test_target@localhost:5432/test_target?sslmode=disable" \
       -f 0.5
       -include "user: id=1"
-      -include "group: id=1"
+      -include "group: all"
       -exclude "domains: all"
 
 ```

@@ -14,11 +14,18 @@ func (i *arrayExtra) String() string {
 }
 
 func (i *arrayExtra) Set(value string) error {
-	q := strings.Split(strings.TrimSpace(value), ":")
+	q := strings.SplitN(strings.TrimSpace(value), ":", 2)
 
 	*i = append(*i, subsetter.Rule{
 		Table: strings.TrimSpace(q[0]),
-		Where: strings.TrimSpace(q[1]),
+		Where: maybeAll(strings.TrimSpace(q[1])),
 	})
 	return nil
+}
+
+func maybeAll(s string) string {
+	if s == "all" {
+		return "1=1"
+	}
+	return s
 }

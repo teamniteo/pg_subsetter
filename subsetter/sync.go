@@ -38,9 +38,16 @@ func (r *Rule) String() string {
 	return fmt.Sprintf("%s:%s", r.Table, r.Where)
 }
 
-func (r *Rule) Query() string {
+func (r *Rule) Query(exclude []string) string {
 	if r.Where == "" {
 		return fmt.Sprintf("SELECT * FROM %s", r.Table)
+	}
+
+	if len(exclude) > 0 {
+		exclude = lo.Map(exclude, func(s string, _ int) string {
+			return QuoteString(s)
+		})
+		r.Where = fmt.Sprintf("%s AND id NOT IN (%s)", r.Where, strings.Join(exclude, ","))
 	}
 	return fmt.Sprintf("SELECT * FROM %s WHERE %s", r.Table, r.Where)
 }
@@ -48,7 +55,22 @@ func (r *Rule) Query() string {
 func (r *Rule) Copy(s *Sync) (err error) {
 	log.Debug().Str("query", r.Where).Msgf("Transfering forced rows for table %s", r.Table)
 	var data string
-	if data, err = CopyQueryToString(r.Query(), s.source); err != nil {
+
+	keyName, err := GetPrimaryKeyName(r.Table, s.destination)
+	if err != nil {
+		return errors.Wrapf(err, "Error getting primary key for table %s", r.Table)
+	}
+
+	q := fmt.Sprintf(`SELECT %s FROM %s`, keyName, r.Table)
+	log.Debug().Str("query", q).Msgf("Getting keys for %s from target", r.Table)
+
+	excludedIDs := []string{}
+	if primaryKeys, err := GetKeys(q, s.destination); err == nil {
+		excludedIDs = primaryKeys
+	}
+	log.Debug().Strs("excludedIDs", excludedIDs).Msgf("Excluded IDs for table %s", r.Table)
+
+	if data, err = CopyQueryToString(r.Query(excludedIDs), s.source); err != nil {
 		return errors.Wrapf(err, "Error copying forced rows for table %s", r.Table)
 	}
 	if err = CopyStringToTable(r.Table, data, s.destination); err != nil {
@@ -152,7 +174,7 @@ retry:
 			if *depth < 1 {
 				goto retry
 			} else {
-				log.Warn().Str("table", relation.ForeignTable).Str("primary", relation.PrimaryTable).Msgf("No keys found at this time")
+				log.Debug().Str("table", relation.ForeignTable).Str("primary", relation.PrimaryTable).Msgf("No keys found at this time")
 				return errors.New("Max depth reached")
 			}
 
