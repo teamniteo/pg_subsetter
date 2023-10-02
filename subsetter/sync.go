@@ -53,7 +53,7 @@ func (r *Rule) Query(exclude []string) string {
 }
 
 func (r *Rule) Copy(s *Sync) (err error) {
-	log.Debug().Str("query", r.Where).Msgf("Transfering forced rows for table %s", r.Table)
+	log.Debug().Str("query", r.Where).Msgf("Transferring forced rows for table %s", r.Table)
 	var data string
 
 	keyName, err := GetPrimaryKeyName(r.Table, s.destination)
@@ -118,9 +118,9 @@ func (s *Sync) Close() {
 // copyTableData copies the data from a table in the source database to the destination database
 func copyTableData(table Table, relatedQueries []string, withLimit bool, source *pgxpool.Pool, destination *pgxpool.Pool) (err error) {
 	// Backtrace the inserted ids from main table to related table
-	subselectQeury := ""
+	subSelectQuery := ""
 	if len(relatedQueries) > 0 {
-		subselectQeury = "WHERE " + strings.Join(relatedQueries, " AND ")
+		subSelectQuery = "WHERE " + strings.Join(relatedQueries, " AND ")
 	}
 
 	limit := ""
@@ -129,7 +129,7 @@ func copyTableData(table Table, relatedQueries []string, withLimit bool, source 
 	}
 
 	var data string
-	if data, err = CopyTableToString(table.Name, limit, subselectQeury, source); err != nil {
+	if data, err = CopyTableToString(table.Name, limit, subSelectQuery, source); err != nil {
 		//log.Error().Err(err).Str("table", table.Name).Msg("Error getting table data")
 		return
 	}
@@ -214,7 +214,7 @@ func RelationalCopy(
 
 		relatedTable := TableByName(tables, tableName)
 		*visitedTables = append(*visitedTables, relatedTable.Name)
-		// Use realized query to get priamry keys that are already in the destination for all related tables
+		// Use realized query to get primary keys that are already in the destination for all related tables
 
 		// Selection query for this table
 		relatedQueries := []string{}
@@ -227,7 +227,7 @@ func RelationalCopy(
 		}
 
 		if len(relatedQueries) > 0 {
-			log.Debug().Str("table", relatedTable.Name).Strs("relatedQueries", relatedQueries).Msg("Transfering with RelationalCopy")
+			log.Debug().Str("table", relatedTable.Name).Strs("relatedQueries", relatedQueries).Msg("Transferring with RelationalCopy")
 		}
 
 		if err = copyTableData(relatedTable, relatedQueries, false, source, destination); err != nil {
@@ -252,7 +252,7 @@ func (s *Sync) CopyTables(tables []Table) (err error) {
 	for _, table := range lo.Filter(tables, func(table Table, _ int) bool {
 		return len(table.Relations) == 0
 	}) {
-		log.Info().Str("table", table.Name).Msg("Transfering")
+		log.Info().Str("table", table.Name).Msg("Transferring")
 		if err = copyTableData(table, []string{}, true, s.source, s.destination); err != nil {
 			return errors.Wrapf(err, "Error copying table %s", table.Name)
 		}
@@ -277,15 +277,15 @@ func (s *Sync) CopyTables(tables []Table) (err error) {
 	for _, complexTable := range lo.Filter(tables, func(table Table, _ int) bool {
 		return len(table.Relations) > 0
 	}) {
-		log.Info().Str("table", complexTable.Name).Msg("Transfering")
+		log.Info().Str("table", complexTable.Name).Msg("Transferring")
 		if err := RelationalCopy(&depth, tables, complexTable, &visitedTables, s.source, s.destination); err != nil {
-			log.Info().Str("table", complexTable.Name).Msgf("Transfering failed, retrying later")
+			log.Info().Str("table", complexTable.Name).Msgf("Transferring failed, retrying later")
 			maybeRetry = append(maybeRetry, complexTable)
 		}
 
 		for _, include := range s.include {
 			if include.Table == complexTable.Name {
-				log.Warn().Str("table", complexTable.Name).Msgf("Transfering forced rows for relational table is not supported.")
+				log.Warn().Str("table", complexTable.Name).Msgf("Transferring forced rows for relational table is not supported.")
 			}
 		}
 	}
@@ -293,9 +293,9 @@ func (s *Sync) CopyTables(tables []Table) (err error) {
 	// Retry tables with relations
 	visitedRetriedTables := []string{}
 	for _, retiredTable := range maybeRetry {
-		log.Info().Str("table", retiredTable.Name).Msg("Transfering")
+		log.Info().Str("table", retiredTable.Name).Msg("Transferring")
 		if err := RelationalCopy(&depth, tables, retiredTable, &visitedRetriedTables, s.source, s.destination); err != nil {
-			log.Warn().Str("table", retiredTable.Name).Msgf("Transfering failed, try increasing fraction percentage")
+			log.Warn().Str("table", retiredTable.Name).Msgf("Transferring failed, try increasing fraction percentage")
 		}
 	}
 

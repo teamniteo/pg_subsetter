@@ -22,3 +22,12 @@ build:
 
 lint:
 	golangci-lint run
+
+dump:
+	pg_dump --no-acl --schema-only -n public -x -O -f ./dump.sql $(filter-out $@,$(MAKECMDGOALS))
+
+restore:
+	psql -f ./dump.sql "postgres://test_target@localhost:5432/test_target?sslmode=disable"
+
+clear:
+	psql -c "DROP OWNED BY CURRENT_USER;" "postgres://test_target@localhost:5432/test_target?sslmode=disable"
