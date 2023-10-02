@@ -5,10 +5,15 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 )
+
+var cachedRelations *[]RelationRaw
+var mutexCachedRelations sync.Once
 
 type Relation struct {
 	PrimaryTable  string
@@ -55,12 +60,12 @@ func (r *RelationRaw) toRelation() Relation {
 	return rel
 }
 
-// GetRelations returns a list of tables that have a foreign key for particular table.
-func GetRelations(table string, conn *pgxpool.Pool) (relations []Relation, err error) {
+func getAllRelations(table string, conn *pgxpool.Pool) *[]RelationRaw {
 
-	q := `SELECT
+	mutexCachedRelations.Do(func() {
+		q := `SELECT
 		conrelid::regclass AS primary_table,
-		confrelid::regclass AS refrerenced_table,
+		confrelid::regclass AS referenced_table,
 		pg_get_constraintdef(c.oid, TRUE) AS sql
 	FROM
 		pg_constraint c
@@ -69,24 +74,45 @@ func GetRelations(table string, conn *pgxpool.Pool) (relations []Relation, err e
 		c.contype = 'f'
 		AND n.nspname = 'public';`
 
-	rows, err := conn.Query(context.Background(), q)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var rel RelationRaw
-
-		err = rows.Scan(&rel.PrimaryTable, &rel.ForeignTable, &rel.SQL)
+		rows, err := conn.Query(context.Background(), q)
 		if err != nil {
 			return
 		}
+		defer rows.Close()
+		relations := []RelationRaw{}
+		for rows.Next() {
+			var rel RelationRaw
+
+			err = rows.Scan(&rel.PrimaryTable, &rel.ForeignTable, &rel.SQL)
+			if err != nil {
+				return
+			}
+			relations = append(relations, rel)
+			log.Debug().Str("table", rel.PrimaryTable).Str("foreign", rel.ForeignTable).Msg("Found relation")
+		}
+		cachedRelations = &relations
+
+	})
+
+	return cachedRelations
+}
+
+// GetRelations returns a list of tables that are foreign key for particular table.
+func GetRelations(table string, conn *pgxpool.Pool) (relations []Relation) {
+	for _, rel := range *getAllRelations(table, conn) {
 		if table == rel.PrimaryTable {
 			relations = append(relations, rel.toRelation())
 		}
-
 	}
+	return
+}
 
+// GetRequiredBy returns a list of tables that have are foreign key for particular table.
+func GetRequiredBy(table string, conn *pgxpool.Pool) (relations []Relation) {
+	for _, rel := range *getAllRelations(table, conn) {
+		if table == rel.ForeignTable {
+			relations = append(relations, rel.toRelation())
+		}
+	}
 	return
 }

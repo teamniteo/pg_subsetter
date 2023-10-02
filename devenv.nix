@@ -14,6 +14,7 @@
       eclint # EditorConfig linter and fixer
       gnumake # GNU Make
       goreleaser # Go binary release tool
+      pgweb # PostgreSQL web interface
     ];
 
   languages.javascript.enable = true;

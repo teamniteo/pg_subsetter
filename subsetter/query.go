@@ -12,9 +12,10 @@ import (
 )
 
 type Table struct {
-	Name      string
-	Rows      int
-	Relations []Relation
+	Name       string
+	Rows       int
+	Relations  []Relation
+	RequiredBy []Relation
 }
 
 // RelationNames returns a list of relation names in human readable format.
@@ -38,13 +39,12 @@ func (t *Table) IsSelfRelated() bool {
 
 // IsSelfRelated returns true if a table is self related.
 func TableByName(tables []Table, name string) Table {
-	return lo.Filter(tables, func(table Table, _ int) bool {
-		return table.Name == name
-	})[0]
+	return lo.FindOrElse(tables, Table{}, func(t Table) bool {
+		return t.Name == name
+	})
 }
 
 // GetTablesWithRows returns a list of tables with the number of rows in each table.
-// Warning reltuples used to dermine size is an estimate of the number of rows in the table and can be zero for small tables.
 func GetTablesWithRows(conn *pgxpool.Pool) (tables []Table, err error) {
 	q := `SELECT
 		relname,
@@ -79,10 +79,10 @@ func GetTablesWithRows(conn *pgxpool.Pool) (tables []Table, err error) {
 			}
 
 			// Get relations
-			table.Relations, err = GetRelations(table.Name, conn)
-			if err != nil {
-				return nil, err
-			}
+			table.Relations = GetRelations(table.Name, conn)
+
+			// Get reverse relations
+			table.RequiredBy = GetRequiredBy(table.Name, conn)
 
 			tables = append(tables, table)
 		}
@@ -153,13 +153,19 @@ func CopyQueryToString(query string, conn *pgxpool.Pool) (result string, err err
 
 // CopyTableToString copies a table to a string.
 func CopyTableToString(table string, limit string, where string, conn *pgxpool.Pool) (result string, err error) {
-	q := fmt.Sprintf(`SELECT * FROM %s %s order by random() %s`, table, where, limit)
-	log.Debug().Msgf("Query: %s", q)
+	maybeOrder := ""
+	if lo.IsNotEmpty(where) {
+		maybeOrder = "order by random()"
+	}
+
+	q := fmt.Sprintf(`SELECT * FROM %s %s %s %s`, table, where, maybeOrder, limit)
+	log.Debug().Msgf("CopyTableToString query: %s", q)
 	return CopyQueryToString(q, conn)
 }
 
 // CopyStringToTable copies a string to a table.
 func CopyStringToTable(table string, data string, conn *pgxpool.Pool) (err error) {
+	log.Debug().Msgf("CopyStringToTable query: %s", table)
 	q := fmt.Sprintf(`copy %s from stdin`, table)
 	var buff bytes.Buffer
 	buff.WriteString(data)

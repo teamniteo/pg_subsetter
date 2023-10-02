@@ -25,7 +25,7 @@ func (i *arrayExtra) Set(value string) error {
 
 func maybeAll(s string) string {
 	if s == "all" {
-		return "1=1"
+		return subsetter.RuleAll
 	}
 	return s
 }

@@ -18,7 +18,7 @@ func TestSync_CopyTables(t *testing.T) {
 		source:      src,
 		destination: dst,
 	}
-	tables := []Table{{"simple", 10, []Relation{}}}
+	tables := []Table{{"simple", 10, []Relation{}, []Relation{}}}
 
 	if err := s.CopyTables(tables); err != nil {
 		t.Errorf("Sync.CopyTables() error = %v", err)

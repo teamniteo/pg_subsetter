@@ -17,7 +17,11 @@ func TestGetTablesWithRows(t *testing.T) {
 		wantTables []Table
 		wantErr    bool
 	}{
-		{"With tables", conn, []Table{{"simple", 0, []Relation{}}, {"relation", 0, []Relation{}}}, false},
+		{"With tables", conn,
+			[]Table{
+				{"simple", 0, []Relation{}, []Relation{}},
+				{"relation", 0, []Relation{}, []Relation{}},
+			}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
