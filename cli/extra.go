@@ -9,16 +9,22 @@ import (
 
 type arrayExtra []subsetter.Rule
 
-func (i *arrayExtra) String() string {
-	return fmt.Sprintf("%v", *i)
+func (ae *arrayExtra) String() string {
+	return fmt.Sprintf("%v", *ae)
 }
 
-func (i *arrayExtra) Set(value string) error {
+func (ae *arrayExtra) Set(value string) error {
 	q := strings.SplitN(strings.TrimSpace(value), ":", 2)
 
-	*i = append(*i, subsetter.Rule{
-		Table: strings.TrimSpace(q[0]),
-		Where: maybeAll(strings.TrimSpace(q[1])),
+	table := strings.TrimSpace(q[0])
+	where := ""
+	if len(q) > 1 {
+		where = strings.TrimSpace(q[1])
+	}
+
+	*ae = append(*ae, subsetter.Rule{
+		Table: table,
+		Where: maybeAll(where),
 	})
 	return nil
 }

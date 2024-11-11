@@ -14,6 +14,8 @@ func Test_arrayExtra_Set(t *testing.T) {
 		wantErr bool
 	}{
 		{"With tables", "simple: id < 10", arrayExtra{{Table: "simple", Where: "id < 10"}}, false},
+		{"With tables and all", "simple: all", arrayExtra{{Table: "simple", Where: "1=1"}}, false},
+		{"With tables only", "simple", arrayExtra{{Table: "simple"}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
