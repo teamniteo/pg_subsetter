@@ -129,7 +129,22 @@ func (s *Sync) CopyTables(tables []Table) (err error) {
 
 		for _, include := range s.include {
 			if include.Table == complexTable.Name {
-				log.Warn().Str("table", complexTable.Name).Msgf("Transferring forced rows for relational table is not supported.")
+				// Copy only primary row by first setting ignore relational checks
+				_, err := s.destination.Exec(context.Background(), fmt.Sprintf("ALTER TABLE %s DISABLE TRIGGER USER;", complexTable.Name))
+				if err != nil {
+					return errors.Wrap(err, "Error setting session_replication_role to replica")
+				}
+
+				err = include.Copy(s)
+				if err != nil {
+					return errors.Wrapf(err, "Error copying forced rows for table %s", complexTable.Name)
+				}
+
+				// Set relational checks back
+				_, err = s.destination.Exec(context.Background(), fmt.Sprintf("ALTER TABLE %s ENABLE TRIGGER USER;", complexTable.Name))
+				if err != nil {
+					return errors.Wrap(err, "Error setting session_replication_role to origin")
+				}
 			}
 		}
 	}

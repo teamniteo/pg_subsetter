@@ -2,11 +2,18 @@ PACKAGE=niteo.co/subsetter
 
 .PHONY: run
 run:
-	go run "${PACKAGE}/$(filter-out $@,$(MAKECMDGOALS))" 
+	go run ./cli -src "postgres://test_source@localhost:5432/test_source?sslmode=disable" -dst "postgres://test_target@localhost:5432/test_target?sslmode=disable" \
+        -f 0.5 \
+        --include "users:id='fd7e087d-67cf-4f05-902e-29ec6212f412'" \
+        --exclude domains \
+		--exclude domains_godaddy \
+		--exclude domains_whoisfreaks \
+		--exclude domains_dropcatch \
+		--exclude domains_namesilo \
+		--exclude domains_sedo \
+		--exclude domains_namecheap \
+		--exclude domains_snapnames
 
-.PHONY: up
-up:
-	process-compose up -t=false -p=0
 
 .PHONY: is-postgres-running
 is-postgres-running:
