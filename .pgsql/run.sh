@@ -2,6 +2,9 @@
 # shellcheck shell=sh disable=SC2129
 set -e
 
+export PGDATA=./data
+export PGHOST=.
+
 # Reset the database
 pg_ctl -D .pgsql/data -w stop -m fast || true
 rm -rf .pgsql/data

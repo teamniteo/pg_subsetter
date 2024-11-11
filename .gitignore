@@ -6,3 +6,13 @@ dist/
 *.sh
 .devenv
 .pre-commit-config.yaml
+.devenv.flake.nix
+# Devenv
+.devenv*
+devenv.local.nix
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
