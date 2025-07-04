@@ -1,7 +1,3 @@
-## We're hiring!
-
-At Niteo we regularly contribute back to the Open Source community. If you do too, we'd like to invite you to [join our team](https://niteo.co/careers)!
-
 # pg_subsetter
 
 [![lint](https://github.com/teamniteo/pg_subsetter/actions/workflows/lint.yml/badge.svg)](https://github.com/teamniteo/pg_subsetter/actions/workflows/lint.yml) [![build](https://github.com/teamniteo/pg_subsetter/actions/workflows/go.yml/badge.svg)](https://github.com/teamniteo/pg_subsetter/actions/workflows/go.yml) [![vuln](https://github.com/teamniteo/pg_subsetter/actions/workflows/vuln.yml/badge.svg)](https://github.com/teamniteo/pg_subsetter/actions/workflows/vuln.yml) [![release](https://github.com/teamniteo/pg_subsetter/actions/workflows/release.yml/badge.svg)](https://github.com/teamniteo/pg_subsetter/actions/workflows/release.yml)
@@ -75,3 +71,7 @@ curl -Ls https://github.com/teamniteo/pg_subsetter/releases/latest/download/pg_s
 ```
 
 For other downloads see releases.
+
+## We're hiring!
+
+At Niteo we regularly contribute back to the Open Source community. If you do too, we'd like to invite you to [join our team](https://niteo.co/careers)!
